@@ -1,4 +1,4 @@
-# Note: These examples do not set authentication details, see the AWS Guide for details.
+# Note: These examples do not set authentication details, fds see the AWS Guide for details.
 
 # Assume an existing role (more details: https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html)
 - community.aws.sts_assume_role:
