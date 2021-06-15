@@ -1,0 +1,43 @@
+# ecs_taskdefinition.yml
+# 機能：AWS ECSタスク定義を作成する
+---
+- ecs_taskdefinition:
+    aws_access_key: "{{ STS_ASSUME_ROLE.sts_creds.access_key }}"
+    aws_secret_key: "{{ STS_ASSUME_ROLE.sts_creds.secret_key }}"
+    security_token: "{{ STS_ASSUME_ROLE.sts_creds.session_token }}"
+    family: "{{ TASK_family }}" # タスク定義名
+    cpu: "{{ TASK_cpu }}" # タスクCPU数
+    memory: "{{ TASK_memory }}" # タスクメモリ
+    task_role_arn: "{{ TASK_task_role_arn }}" # タスクロール
+    volumes: "{{ TASK_volumes | default(omit) }}" # ボリューム定義
+    execution_role_arn: "{{ TASK_execution_role_arn }}" # タスク実行ロール
+    force_create: "{{ TASK_force_create }}" # 常に新しいタスクを作成しない 
+    launch_type: "{{ TASK_launch_type }}" #  起動タイプ
+    network_mode: "{{ TASK_network_mode }}" # ネットワークモード
+    region: "{{ TASK_region }}" # AWSリージョン
+    state: "{{ TASK_state }}" # 目的状態：起動
+    containers: # コンテナ定義
+    - name: "{{ CONTAINER_name }}" # コンテナ名
+      image: "{{ CONTAINER_image }}" # コンテナイメージ
+      portMappings: "{{ CONTAINER_portMappings }}" # コンテナポート
+      healthCheck: "{{ CONTAINER_healthCheck }}" # コンテナヘルスチェック
+      environment: "{{ CONTAINER_environment }}" # コンテナ起動時に渡される環境変数
+      mountPoints: "{{ CONTAINER_mountPoints | default(omit) }}" # コンテナ内のデータボリュームのマウントポイント
+      secrets: "{{ CONTAINER_secrets }}" # ASM上の機密情報をコンテナーから参照する設定
+      logConfiguration: "{{ CONTAINER_logConfiguration }}" # コンテナログ定義
+  register: ECS_TASKDEFINITION  # 戻り値
+- debug: msg="{{ ECS_TASKDEFINITION }}"
+
+# タグ付与(ecs_taskdefinitionでタグを付与できないため)
+- name: setTags
+  environment:
+      AWS_ACCESS_KEY_ID: "{{ STS_ASSUME_ROLE.sts_creds.access_key }}"
+      AWS_SECRET_ACCESS_KEY: "{{ STS_ASSUME_ROLE.sts_creds.secret_key }}"
+      AWS_SESSION_TOKEN: "{{ STS_ASSUME_ROLE.sts_creds.session_token }}"
+  shell: |
+      aws resourcegroupstaggingapi tag-resources \
+      --resource-arn-list {{ ECS_TASKDEFINITION.taskdefinition.taskDefinitionArn }} \
+      --region {{ TASK_region }} \
+      --tags Name={{ TASK_TAG_Name }},Billing={{ TASK_TAG_Billing }},Author={{ TASK_TAG_Author }}
+  register: SHELL_SETTAGS
+- debug: msg="{{ SHELL_SETTAGS }}"

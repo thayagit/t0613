@@ -1,0 +1,17 @@
+# sts_assume_role.yml
+# 機能：AWSユーザーアクセス情報を元に、AWSモジュール用の中間アクセス情報を取得するA
+---
+- sts_assume_role:
+    aws_access_key: "{{ AWS_ACCESS_KEY }}" # ユーザーのAWSアクセスキー
+    aws_secret_key: "{{ AWS_SECRET_KEY }}" # ユーザーのAWSシークレットキー
+    role_arn: "{{ AWS_ROLE }}" # ユーザーのAWSロール(ARN記述)
+    role_session_name: "ansible-session" # セッション名
+    mfa_serial_number: "{{ MFA_DEVICE }}" # ユーザーのMFAデバイス(ARN記述)
+    mfa_token: "{{ MFA_TOKEN }}" # ユーザーのMFAデバイスで表示されている認証番号
+    region: "{{ REGION }}" # AWSリージョン
+  register: STS_ASSUME_ROLE  # 戻り値
+- debug: msg="{{ STS_ASSUME_ROLE }}"
+- debug: var=STS_ASSUME_ROLE.sts_creds.access_key    # AWS中間アクセスキー
+- debug: var=STS_ASSUME_ROLE.sts_creds.secret_key    # AWS中間シークレットキー
+- debug: var=STS_ASSUME_ROLE.sts_creds.session_token # AWS中間セッショントークン
+

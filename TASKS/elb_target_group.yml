@@ -1,0 +1,18 @@
+# elb_target_group.yml
+# 機能：AWS ターゲットグループを作成する
+---
+- elb_target_group:
+    aws_access_key: "{{ STS_ASSUME_ROLE.sts_creds.access_key }}"
+    aws_secret_key: "{{ STS_ASSUME_ROLE.sts_creds.secret_key }}"
+    security_token: "{{ STS_ASSUME_ROLE.sts_creds.session_token }}"
+    name: "{{ TG_name }}" # 作成するターゲットグループ名
+    state: "{{ TG_state }}" # 実行後のステータス
+    protocol: "{{ TG_protocol }}" # ターゲットに渡すプロトコル
+    port: "{{ TG_port }}" # ターゲットに渡すポート
+    vpc_id: "{{ TG_vpc_id }}" # 使用するVPCID
+    region: "{{ TG_region }}" # ターゲットグループを配置するリージョン
+    target_type: "{{ TG_target_type }}" # ターゲットグループの接続先のタイプ
+    targets: "{{ TG_targets }}" # ターゲットグループの接続先
+    tags: "{{ TG_tags }}" # タグ情報
+  register: ELB_TARGET_GROUP  # 戻り値
+- debug: msg="{{ ELB_TARGET_GROUP }}"

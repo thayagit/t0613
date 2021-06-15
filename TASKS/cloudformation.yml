@@ -1,0 +1,15 @@
+# cloudformation.yml
+# 機能：AWS cloudformationスタックを作成する
+---
+- cloudformation:
+    aws_access_key: "{{ STS_ASSUME_ROLE.sts_creds.access_key }}"
+    aws_secret_key: "{{ STS_ASSUME_ROLE.sts_creds.secret_key }}"
+    security_token: "{{ STS_ASSUME_ROLE.sts_creds.session_token }}"
+    stack_name: "{{ CFNstack_name }}"
+    state: "{{ CFNstate }}"
+    region: "{{ CFNregion }}"
+    disable_rollback: "{{ CFNdisable_rollback }}"
+    template: "{{ CFNtemplate }}"
+    template_parameters: "{{ CFNtemplate_parameters }}"
+  register: CLOUDFORMATION
+- debug: msg="{{ CLOUDFORMATION }}"

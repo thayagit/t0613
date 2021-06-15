@@ -1,0 +1,15 @@
+# ec2_group.yml
+# 機能：AWS セキュリティグループを作成する
+---
+- ec2_group:
+    aws_access_key: "{{ STS_ASSUME_ROLE.sts_creds.access_key }}"
+    aws_secret_key: "{{ STS_ASSUME_ROLE.sts_creds.secret_key }}"
+    security_token: "{{ STS_ASSUME_ROLE.sts_creds.session_token }}"
+    name: "{{ SG_name }}" # 作成するセキュリティグループ名
+    description: "{{ SG_description }}" # セキュリティグループの説明
+    vpc_id: "{{ SG_vpc_id }}" # 使用するVPCID
+    region: "{{ SG_region }}" # 配置するAWSリージョン
+    rules: "{{ SG_rules }}" # 設定するルール
+    tags: "{{ SG_tags }}" # タグ情報
+  register: EC2_GROUP
+- debug: msg="{{ EC2_GROUP }}"

@@ -1,0 +1,17 @@
+# AWSCLI-authorize-security-group-igress.yml
+# 機能：AWS セキュリティグループにインバウンドルールを追加する
+---
+- name: Add_SGingress
+  environment:
+      AWS_ACCESS_KEY_ID: "{{ STS_ASSUME_ROLE.sts_creds.access_key }}"
+      AWS_SECRET_ACCESS_KEY: "{{ STS_ASSUME_ROLE.sts_creds.secret_key }}"
+      AWS_SESSION_TOKEN: "{{ STS_ASSUME_ROLE.sts_creds.session_token }}"
+  shell: |
+      aws ec2 authorize-security-group-ingress \
+      --group-id "{{ SG_groupid }}" \
+      --protocol "{{ SG_protocol }}" \
+      --port "{{ SG_port }}" \
+      --cidr "{{ SG_cidr }}" \
+      --region {{ SG_region }}
+  register: SHELL_ADD_SGingress
+- debug: msg="{{ SHELL_ADD_SGingress }}"

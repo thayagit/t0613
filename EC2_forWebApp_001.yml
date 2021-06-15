@@ -1,0 +1,323 @@
+# EC2_forWebApp_001.yml
+#
+# 仕様
+#   AWXジョブテンプレート:dev_aws_STANDARD_EC2_forWebApp_001
+#   社内Webアプリケーション用のAWS EC2(amazonLinux2)を1つ構築する
+#   社内Webアプリケーションで使用するAWS RDS(postgreSQL)を1つ構築する
+#   必要となるセキュリティグループ、ELBも構築する
+#   EC2にtomcat9を導入する(事後作業にて導入)
+#   
+# 仕様詳細
+#   構築：当playbookでリソースが新規構築されます
+#   既存：既存のリソースを使用します
+#   事前：事前に準備する必要があります
+#   事後：実行した後に実施する必要があります
+#
+#   既存    社内PCのブラウザ
+#           ↓ http://(ELBのDNS名):(ELBリスナーポート)
+#           AWS(リージョン=東京ap-northeast-1)
+#           VPC(VPCID=vpc-0778341ddac33a2df)
+#           ↓
+#   構築    ELB用セキュリティグループ   AP9999-dev-SG-ELB-XXXX
+#           ↓
+#   構築    ELBリスナー(ポート=指定)    AP9999-dev-ELB-XXXX
+#   構築    ELBターゲットグループ       AP9999-dev-TG-XXXX
+#   構築    ELBターゲット(=コンテナ)
+#           ↓
+#   構築    EC2用セキュリティグループ   AP99999-dev-SG-EC2-XXXX
+#           ↓
+#   構築    EC2
+#   事前    キーペア
+#           ↓
+#   構築    RDS用セキュリティグループ    AP9999-dev-SG-RDS-XXXX
+#           ↓
+#   構築    RDS(PostgresSQL)          AP9999-dev-RDS-XXXX
+#
+#   下記で、Linuxにtomcatを導入
+#   事後　　 linuxにログインし、下記を実行
+#   事後　　 sudo su -
+#   事後　　 useradd -m ansible -G wheel
+#   事後　　 passwd ansible
+#   事後　　 cp -p /etc/sudoers /etc/sudoers_backup
+#   事後　　 cp -p /etc/ssh/sshd_config /etc/ssh/sshd_config_backup
+#   事後　　 echo "ansible         ALL=(ALL)       NOPASSWD: ALL" >> /etc/sudoers
+#   事後　　 echo "Match User ansible" >> /etc/ssh/sshd_config
+#   事後　　 echo "    PasswordAuthentication yes" >> /etc/ssh/sshd_config
+#   事後　　 systemctl restart sshd
+#   事後　　 以下、AWXコンソールで操作
+#   事後　　 Inventoriesで「dev_inventory」を選択
+#   事後　　 「Hosts」タブで「Add」
+#   事後　　 Name：ホスト名もしくはIPアドレス、Description：サーバーの説明、「Save」
+#   事後　　 ジョブテンプレート「dev_linux_STANDARD_Linux_forWebApp_001」を実行
+#
+# サーベイ項目        
+#   AWXジョブテンプレート実行時に入力する内容です
+#   事前に内容を決定のうえ、AWXジョブテンプレートを実行してください
+#   項目                   　必須/任意(範囲)         デフォルト値　変数
+#-----------------------------------------------------------------------------------------
+#   アプリケーションID       　必須 文字(7文字)        なし          APPLID       
+#   リソース名やタグnameの先頭に指定される(例)AP99999の場合：AP99999-dev-SG-xxxx
+#-----------------------------------------------------------------------------------------
+#   アプリケーション接尾語   　必須 文字(-1024文字)     なし          APPLDESC
+#   リソース名やタグnameの接尾に指定される(例)WEB1の場合：AP99999-dev-SG-WEB1
+#-----------------------------------------------------------------------------------------
+#   タグBilling              必須 文字(7文字)        なし          TAG_BILLING
+#   タグ"Billing"として指定される
+#-----------------------------------------------------------------------------------------
+#   タグAuthor               必須 文字(-1024文字)    なし          TAG_AUTHOR
+#   タグ"Author"として指定される
+#-----------------------------------------------------------------------------------------
+#   ELBリスナーポート         必須 文字               80           ELB_port
+#   ELBが端末から受け取るポート
+#-----------------------------------------------------------------------------------------
+#   EC2ポート                必須 文字               なし         EC2_port
+#   EC2がELBから受け取るポート
+#-----------------------------------------------------------------------------------------
+#   postgreSQLポート         必須 文字               5432         RDS_port
+#   RDSがEC2から受け取るポート
+#-----------------------------------------------------------------------------------------
+#   EC2 Amazonマシンイメージ(AMI) 必須 文字(21文字) ami-0992fc94ca0f1415a  EC2_image_id
+#   ami-99999999999999999
+#-----------------------------------------------------------------------------------------
+#   EC2 インスタンスタイプ     必須 文字(-1024文字)    t2.micro     EC2_instance_type
+#   (例)t2.micro  t2.large
+#-----------------------------------------------------------------------------------------
+#   EC2 ボリューム容量(GiB)    必須 数値 (4-10000)     なし         EC2_VolSize
+#   SSDサイズ
+#-----------------------------------------------------------------------------------------
+#   EC2 キーペア名    　　　　　必須 文字 (-1024文字)   なし         EC2_key_name
+#   既存のキーペアを指定
+#-----------------------------------------------------------------------------------------
+#   RDS postgresバージョン 　　必須 文字 (-1024文字)    12.4        RDS_engine_version
+#   (例)12.4
+#-----------------------------------------------------------------------------------------
+#   RDS インスタンスタイプ     必須 文字(-1024文字)     db.t2.micro  RDS_db_instance_class
+#   (例)db.t2.micro  db.t2.large
+#-----------------------------------------------------------------------------------------
+#   RDS ボリューム容量(GiB)    必須 数値 (20-16384)     なし         RDS_allocated_storage
+#   SSDサイズ
+#-----------------------------------------------------------------------------------------
+#   RDS DB名      　　　　　　　必須 文字 (-1024文字)     なし         RDS_db_name
+#   作成するDB名
+#-----------------------------------------------------------------------------------------
+#   RDS マスターユーザー名      必須 文字 (-1024文字)    postgres      RDS_username
+#   DB インスタンスのマスターユーザーのログイン ID
+#-----------------------------------------------------------------------------------------
+#   RDS マスターパスワード      必須 パスワード (8-30文字)  なし        RDS_password
+#   DB インスタンスのマスターユーザーのパスワード
+#-----------------------------------------------------------------------------------------
+#   AWSアクセスキー          必須 文字(20文字)     　　　なし　　　　 AWS_ACCESS_KEY
+#   担当者のAWSアクセスキー
+#-----------------------------------------------------------------------------------------
+#   AWSシークレットキー      必須 文字(40文字)     　　　なし　　　　　AWS_SECRET_KEY
+#   担当者のAWSシークレットキー
+#-----------------------------------------------------------------------------------------
+#   AWSロールARN             必須 文字(-1024文字)  　　なし　　　　　AWS_ROLE
+#   担当者のロールARN
+#-----------------------------------------------------------------------------------------
+#   AWS仮想MFAデバイスARN    必須 文字(-1024文字)  　　　なし　　　   MFA_DEVICE
+#   担当者の仮想MFAデバイスARN
+#-----------------------------------------------------------------------------------------
+#   AWS MFAコード            必須 文字(6文字)      　   なし        MFA_TOKEN
+#   担当者のMFAデバイスに表示されているコード
+#-----------------------------------------------------------------------------------------
+
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  collections:
+    - community.aws
+  vars:
+    # このplaybookでのデフォルト設定をここで指定します
+    REGION: "ap-northeast-1"  # AWSリージョン
+    ENVIRON: "dev" # リソース名やタグで指定される環境
+    VPCID: "vpc-0778341ddac33a2df" # VPC ID 
+    SUBNET1: "subnet-0fdce839ca2a3b269" # サブネット1
+    SUBNET2: "subnet-0714d6128941073e0" # サブネット2
+    SUBNETGROUP: "default-vpc-0778341ddac33a2df" # サブネットグループ
+    SG_name: ""
+    SG1_name: "{{ APPLID + '-' + ENVIRON + '-SG_ELB-' + APPLDESC }}" # セキュリティグループ名
+    SG2_name: "{{ APPLID + '-' + ENVIRON + '-SG_EC2-' + APPLDESC }}" # セキュリティグループ名
+    SG3_name: "{{ APPLID + '-' + ENVIRON + '-SG_RDS-' + APPLDESC }}" # セキュリティグループ名
+    TG_name: "{{ APPLID + '-' + ENVIRON + '-TG-' + APPLDESC }}" # ターゲットグループ名
+    ELB_name: "{{ APPLID + '-' + ENVIRON + '-ELB-' + APPLDESC }}" # 作成するロードバランサ名
+    EC2_name: "{{ APPLID + '-' + ENVIRON + '-EC2-' + APPLDESC }}" # ECSサービス名
+    RDS_id: "{{ APPLID + '-' + ENVIRON + '-RDS-' + APPLDESC }}" # ECSサービス名
+
+  tasks:
+    # 構築の処理をここで指定します。上から下へ順番に実行されます
+    # - set_fact：    変数をセット
+    # - import_tasks：リソース作成等の処理を呼び出し
+    # - debug：       値をAWXジョブ実行結果に表示
+
+    # AWSロールの中間アクセス情報取得
+    - set_fact: # 実行前に変数をセット
+        AWS_ACCESS_KEY: "{{ AWS_ACCESS_KEY }}"
+        AWS_SECRET_KEY: "{{ AWS_SECRET_KEY }}"
+        AWS_ROLE: "{{ AWS_ROLE }}"
+        MFA_DEVICE: "{{ MFA_DEVICE }}"
+        MFA_TOKEN: "{{ MFA_TOKEN }}" # サーベイで指定
+    - import_tasks: "./TASKS/sts_assume_role.yml"    
+    - debug: var=STS_ASSUME_ROLE.sts_creds.access_key
+    - debug: var=STS_ASSUME_ROLE.sts_creds.secret_key
+    - debug: var=STS_ASSUME_ROLE.sts_creds.session_token
+
+
+    # EC2用セキュリティグループ作成
+    - set_fact: # 実行前に変数をセット
+        SG_name: "{{ SG2_name }}"
+        SG_description: "{{ 'for ' + EC2_name }}" # セキュリティグループの説明
+        SG_vpc_id: "{{ VPCID }}" # 使用するVPCID
+        SG_region: "{{ REGION }}" # 配置するAWSリージョン
+        SG_rules: # インバウンドルール
+          - proto: "TCP"
+            from_port: 22
+            to_port: 22
+            cidr_ip: 172.0.0.0/8
+        SG_tags: # タグ情報
+          name: "{{ SG2_name }}"
+          Billing: "{{ TAG_BILLING }}"
+          Author: "{{ TAG_AUTHOR }}"
+    - import_tasks: "./TASKS/ec2_group.yml"
+
+
+    # EC2用セキュリティグループにインバウンドルール追加
+    - set_fact: # 実行前に変数をセット
+        SG_groupid: "{{ EC2_GROUP.group_id }}" # 対象となるセキュリティグループID
+        SG_protocol: "tcp" # 追加するIPプロトコル
+        SG_port: "{{ EC2_port }}" # 追加するポート
+        SG_cidr: "0.0.0.0/0" # 許可するIP範囲
+        SG_region: "{{ REGION }}" # 配置するAWSリージョン
+    - import_tasks: "./TASKS/AWSCLI-authorize-security-group-ingress.yml"
+
+    # EC2用セキュリティグループにアウトバウンドルール追加(例)
+#    - set_fact: # 実行前に変数をセット
+#        SG_groupid: "{{ EC2_GROUP.group_id }}" # 対象となるセキュリティグループID
+#        SG_protocol: "tcp" # 追加するIPプロトコル
+#        SG_port: "80" # 追加するポート
+#        SG_cidr: "172.0.0.0/8" # 許可するIP範囲
+#        SG_region: "{{ REGION }}" # 配置するAWSリージョン
+#    - import_tasks: "./TASKS/AWSCLI-authorize-security-group-egress.yml"
+
+    # EC2作成
+    - set_fact: # 実行前に変数をセット
+        EC2_name: "{{ EC2_name }}" # EC2名
+        EC2_vpc_subnet_id: "{{ SUBNET1 }}"  # 使用するVPCサブネットID
+        EC2_image_id: "{{ EC2_image_id }}" # EC2 Amazonマシンイメージ(AMI)
+        EC2_instance_type: "{{ EC2_instance_type }}" # EC2 インスタンスタイプ
+        EC2_volumes:
+          - device_name: "/dev/xvda" # volume名
+            ebs:
+              volume_size: "{{ EC2_VolSize }}" # ボリュームサイズ
+              delete_on_termination: true # EC2削除時にボリュームも削除する
+        EC2_region: "{{ REGION }}" # 配置するリージョン
+        EC2_key_name: "{{ EC2_key_name }}" # EC2 キーペア名
+        EC2_state: "present" # 実行後のステータス
+        EC2_security_group: "{{ SG2_name }}" # EC2で使用するセキュリティグループ
+        EC2_tags: # タグ情報
+          name: "{{ EC2_name }}"
+          Billing: "{{ TAG_BILLING }}"
+          Author: "{{ TAG_AUTHOR }}"
+          Hostname: "{{ EC2_name }}"
+    - import_tasks: "./TASKS/ec2_instance.yml"
+
+    - debug: var=EC2_INSTANCE.instances[0].private_ip_address
+
+
+    # ELB用セキュリティグループ作成
+    - set_fact: # 実行前に変数をセット
+        SG_name: "{{ SG1_name }}"
+        SG_description: "{{ 'for ' + ELB_name }}" # セキュリティグループの説明
+        SG_vpc_id: "{{ VPCID }}" # 使用するVPCID
+        SG_region: "{{ REGION }}" # 配置するAWSリージョン
+        SG_rules: # インバウンドルール
+          - proto: "TCP"
+            from_port: "{{ ELB_port }}"
+            to_port: "{{ ELB_port }}"
+            cidr_ip: 172.0.0.0/8
+        SG_tags: # タグ情報
+          name: "{{ SG_name }}"
+          Billing: "{{ TAG_BILLING }}"
+          Author: "{{ TAG_AUTHOR }}"
+    - import_tasks: "./TASKS/ec2_group.yml"
+
+
+    # ELBターゲットグループ作成
+    - set_fact: # 実行前に変数をセット
+        TG_name: "{{ TG_name }}"
+        TG_state: "present" # 実行後のステータス
+        TG_protocol: "http" # ターゲットに渡すプロトコル
+        TG_port: "{{ EC2_port }}" # ターゲットに渡すポート
+        TG_vpc_id: "{{ VPCID }}" # 使用するVPCID
+        TG_region: "{{ REGION }}" # ターゲットグループを配置するリージョン
+        TG_target_type: "ip" # ターゲットグループの接続先のタイプ
+        TG_targets: # ターゲットグループの接続先
+          - Id: "{{ EC2_INSTANCE.instances[0].private_ip_address }}"
+        TG_tags: # タグ情報
+          name: "{{ TG_name }}"
+          Billing: "{{ TAG_BILLING }}"
+          Author: "{{ TAG_AUTHOR }}"
+    - import_tasks: "./TASKS/elb_target_group.yml"
+
+    # ELB作成
+    - set_fact: # 実行前に変数をセット
+        ELB_name: "{{ ELB_name }}"
+        ELB_state: "present" # 実行後のステータス
+        ELB_region: "{{ REGION }}" # ロードバランサを配置するリージョン
+        ELB_scheme: "internal" # 接続先：internal：構内、Internet：インターネット
+        ELB_security_groups:
+          - "{{ SG1_name }}" # 使用するセキュリティグループ
+        ELB_listeners: # リスナー定義
+          - Protocol: HTTP
+            Port: "{{ ELB_port }}" # ポート
+            DefaultActions:
+              - Type: forward
+                TargetGroupName: "{{ TG_name }}" # ターゲットグループ名
+        ELB_subnets:  # 使用するサブネット
+          - "{{ SUBNET1 }}"
+          - "{{ SUBNET2 }}"     
+        ELB_tags: # タグ情報
+          name: "{{ ELB_name }}"
+          Billing: "{{ TAG_BILLING }}"
+          Author: "{{ TAG_AUTHOR }}"
+    - import_tasks: "./TASKS/elb_application_lb.yml"
+
+
+    # RDS用セキュリティグループ作成
+    - set_fact: # 実行前に変数をセット
+        SG_name: "{{ SG3_name }}"
+        SG_description: "{{ 'for ' + RDS_id }}" # セキュリティグループの説明
+        SG_vpc_id: "{{ VPCID }}" # 使用するVPCID
+        SG_region: "{{ REGION }}" # 配置するAWSリージョン
+        SG_rules: # インバウンドルール
+          - proto: "TCP"
+            from_port: "{{ RDS_port }}"
+            to_port: "{{ RDS_port }}"
+            cidr_ip: "{{ EC2_INSTANCE.instances[0].private_ip_address + '/32' }}"
+        SG_tags: # タグ情報
+          name: "{{ SG3_name }}"
+          Billing: "{{ TAG_BILLING }}"
+          Author: "{{ TAG_AUTHOR }}"
+    - import_tasks: "./TASKS/ec2_group.yml"
+
+
+    - set_fact: # 実行前に変数をセット
+        RDS_id: "{{ RDS_id }}" # DBインスタンス識別子
+        RDS_region: "{{ REGION }}" # RDSを配置するAWSリージョン
+        RDS_db_name: "{{ RDS_db_name }}" # インスタンスに作成するDB名
+        RDS_state: "present" # 実行後のステータス
+        RDS_engine: "postgres" # DBエンジン
+        RDS_engine_version: "{{ RDS_engine_version }}" # DBバージョン
+        RDS_db_subnet_group_name: "{{ SUBNETGROUP }}" # DBを配置するサブネットグループ名
+        RDS_db_instance_class: "{{ RDS_db_instance_class }}" #DBインスタンスタイプ
+        RDS_username: "{{ RDS_username }}" # DBマスターユーザー名
+        RDS_password: "{{ RDS_password }}" # DBマスターパスワード
+        RDS_allocated_storage: "{{ RDS_allocated_storage }}" # DBのストレージサイ
+        RDS_vpc_security_group_ids: "{{ EC2_GROUP.group_id }}" # 使用するセキュリティグループID          
+        RDS_tags: # タグ情報
+          name: "{{ RDS_id }}"
+          Billing: "{{ TAG_BILLING }}"
+          Author: "{{ TAG_AUTHOR }}"
+    - import_tasks: "./TASKS/rds_instance.yml"
+

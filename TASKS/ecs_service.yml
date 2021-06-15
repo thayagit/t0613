@@ -1,0 +1,35 @@
+# ecs_service.yml
+# 機能：AWS ECSサービスを作成する
+---
+- ecs_service:
+    aws_access_key: "{{ STS_ASSUME_ROLE.sts_creds.access_key }}"
+    aws_secret_key: "{{ STS_ASSUME_ROLE.sts_creds.secret_key }}"
+    security_token: "{{ STS_ASSUME_ROLE.sts_creds.session_token }}"
+    cluster: "{{ ECS_cluster }}" # クラスター
+    deployment_configuration: "{{ ECS_dep_conf }}" # タスクの最小数(パーセント)、最大数(パーセント)
+    health_check_grace_period_seconds: "{{ ECS_health_seconds }}" # ヘルスチェック開始までの待機秒
+    load_balancers: "{{ ECS_load_balancers }}" # 使用ELB
+    name: "{{ ECS_name }}" # ECSサービス名
+    network_configuration: "{{ ECS_network_configuration }}" # ネットワーク設定
+    task_definition: "{{ ECS_task_definition }}" # タスク定義名
+    region: "{{ ECS_region }}" # AWSリージョン
+    scheduling_strategy: "{{ ECS_scheduling_strategy }}" # サービスタイプ レプリカ固定
+    state: "{{ ECS_state }}" # 起動状態とする
+    launch_type: "{{ ECS_launch_type }}" # 起動タイプ
+    desired_count: "{{ ECS_desired_count }}" # タスクの数 1固定
+  register: ECS_SERVICE  # 戻り値
+- debug: msg="{{ ECS_SERVICE }}"
+
+# タグ付与(ecs_serviceでタグを付与できないため)
+- name: setTags
+  environment:
+      AWS_ACCESS_KEY_ID: "{{ STS_ASSUME_ROLE.sts_creds.access_key }}"
+      AWS_SECRET_ACCESS_KEY: "{{ STS_ASSUME_ROLE.sts_creds.secret_key }}"
+      AWS_SESSION_TOKEN: "{{ STS_ASSUME_ROLE.sts_creds.session_token }}"
+  shell: |
+      aws resourcegroupstaggingapi tag-resources \
+      --resource-arn-list {{ ECS_SERVICE.service.serviceArn }} \
+      --region {{ ECS_region }} \
+      --tags Name={{ ECS_TAG_Name }},Billing={{ ECS_TAG_Billing }},Author={{ ECS_TAG_Author }}
+  register: SHELL_SETTAGS
+- debug: msg="{{ SHELL_SETTAGS }}"

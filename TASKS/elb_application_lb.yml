@@ -1,0 +1,17 @@
+# elb_application_lb.yml
+# 機能：AWS アプリケーションロードバランサーを作成する
+---
+- elb_application_lb:
+    aws_access_key: "{{ STS_ASSUME_ROLE.sts_creds.access_key }}"
+    aws_secret_key: "{{ STS_ASSUME_ROLE.sts_creds.secret_key }}"
+    security_token: "{{ STS_ASSUME_ROLE.sts_creds.session_token }}"
+    name: "{{ ELB_name }}" # 作成するロードバランサ名
+    state: "{{ ELB_state }}" # 実行後のステータス
+    region: "{{ ELB_region }}" # ロードバランサを配置するリージョン
+    scheme: "{{ ELB_scheme }}" # 接続先：internal：構内、Internet：インターネット
+    security_groups: "{{ ELB_security_groups }}" # 使用するセキュリティグループ
+    listeners: "{{ ELB_listeners }}" # リスナー定義
+    subnets: "{{ ELB_subnets }}" # 使用するサブネット
+    tags: "{{ ELB_tags }}" # タグ情報
+  register: ELB_APPLICATION_LB  # 戻り値
+- debug: msg="{{ ELB_APPLICATION_LB }}"

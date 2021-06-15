@@ -1,0 +1,19 @@
+# ec2_instance.yml
+# 機能：AWS EC2を作成する
+---
+- ec2_instance:
+    aws_access_key: "{{ STS_ASSUME_ROLE.sts_creds.access_key }}"
+    aws_secret_key: "{{ STS_ASSUME_ROLE.sts_creds.secret_key }}"
+    security_token: "{{ STS_ASSUME_ROLE.sts_creds.session_token }}"
+    name: "{{ EC2_name }}" # 作成するEC2名
+    vpc_subnet_id: "{{ EC2_vpc_subnet_id }}" # 使用するVPCサブネットID
+    image_id: "{{ EC2_image_id }}" # EC2 Amazonマシンイメージ(AMI)
+    instance_type: "{{ EC2_instance_type }}" # EC2のタイプ
+    volumes: "{{ EC2_volumes }}" # EC2で使用するボリューム定義
+    region: "{{ EC2_region }}" # 配置するリージョン
+    state: "{{ EC2_state }}" # 実行後のステータス    
+    security_group: "{{ EC2_security_group }}" # EC2で使用するセキュリティグループ
+    key_name: "{{ EC2_key_name }}" # キーペア名
+    tags: "{{ EC2_tags }}" # タグ情報
+  register: EC2_INSTANCE # 戻り値
+- debug: msg="{{ EC2_INSTANCE }}"

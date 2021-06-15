@@ -1,0 +1,22 @@
+# rds_instance_postgreSQL.yml
+# 機能：AWS RDSにpostgreSQLを作成する
+---
+- rds_instance:
+    aws_access_key: "{{ STS_ASSUME_ROLE.sts_creds.access_key }}"
+    aws_secret_key: "{{ STS_ASSUME_ROLE.sts_creds.secret_key }}"
+    security_token: "{{ STS_ASSUME_ROLE.sts_creds.session_token }}"
+    id: "{{ RDS_id }}" # DBインスタンス識別子
+    region: "{{ RDS_region }}" # RDSを配置するAWSリージョン
+    db_name: "{{ RDS_db_name }}"# インスタンスに作成するDB名
+    state: "{{ RDS_state }}" # 実行後のステータス
+    engine: "{{ RDS_engine }}" # DBエンジン
+    engine_version: "{{ RDS_engine_version }}" # DBバージョン
+    db_subnet_group_name: "{{ RDS_db_subnet_group_name }}"# DBを配置するサブネットグループ名
+    db_instance_class: "{{ RDS_db_instance_class }}" # DBインスタンスタイプ
+    username: "{{ RDS_username }}" # DBマスターユーザー名
+    password: "{{ RDS_password }}" # DBマスターパスワード
+    allocated_storage: "{{ RDS_allocated_storage }}" # DBのストレージサイズ
+    vpc_security_group_ids: "{{ RDS_vpc_security_group_ids }}" # 使用するセキュリティグループID
+    tags: "{{ RDS_tags }}" # タグ情報
+  register: RDS_INSTANCE
+- debug: msg="{{ RDS_INSTANCE }}"
