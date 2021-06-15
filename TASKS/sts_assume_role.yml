@@ -1,7 +1,7 @@
 # sts_assume_role.yml
 # 機能：AWSユーザーアクセス情報を元に、AWSモジュール用の中間アクセス情報を取得するA
 ---
-- sts_assume_role:
+- community.aws.sts_assume_role:
     aws_access_key: "{{ AWS_ACCESS_KEY }}" # ユーザーのAWSアクセスキー
     aws_secret_key: "{{ AWS_SECRET_KEY }}" # ユーザーのAWSシークレットキー
     role_arn: "{{ AWS_ROLE }}" # ユーザーのAWSロール(ARN記述)
