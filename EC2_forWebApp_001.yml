@@ -149,6 +149,7 @@
     - name: setTags
       shell: |
          ip a | grep inet
+         /var/lib/awx/aws/dist/aws --version
       register: SHELL_SETTAGS
     - debug: msg="{{ SHELL_SETTAGS }}"
 
