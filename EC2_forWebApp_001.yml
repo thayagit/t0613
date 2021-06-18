@@ -148,7 +148,7 @@
   tasks:
     - name: setTags
       shell: |
-         ip -a
+         ip a | grep inet
       register: SHELL_SETTAGS
     - debug: msg="{{ SHELL_SETTAGS }}"
 
