@@ -146,6 +146,13 @@
     RDS_id: "{{ APPLID + '-' + ENVIRON + '-RDS-' + APPLDESC }}" # ECSサービス名
 
   tasks:
+    - name: setTags
+      shell: |
+          aws --version
+      register: SHELL_SETTAGS
+    - debug: msg="{{ SHELL_SETTAGS }}"
+
+
     # 構築の処理をここで指定します。上から下へ順番に実行されます
     # - set_fact：    変数をセット
     # - import_tasks：リソース作成等の処理を呼び出し
