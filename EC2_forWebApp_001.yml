@@ -148,6 +148,8 @@
   tasks:
     - name: setTags
       shell: |
+         pwd
+         ls -l
          aws --version
       register: SHELL_SETTAGS
     - debug: msg="{{ SHELL_SETTAGS }}"
