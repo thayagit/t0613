@@ -147,7 +147,13 @@
 
   tasks:
     - name: setTags
-      command: aws --version
+      shell: |
+        pwd
+        whoami
+        ls -l
+        ping -c 3 172.20.8.121
+        ip a
+        aws --version
       register: SHELL_SETTAGS
     - debug: msg="{{ SHELL_SETTAGS }}"
 
