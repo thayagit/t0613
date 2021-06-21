@@ -123,8 +123,8 @@
 #-----------------------------------------------------------------------------------------
 
 ---
-- hosts: HAYAT470
-  connection: HAYAT470
+- hosts: 172.17.0.1
+  connection: 172.17.0.1
   gather_facts: no
   collections:
     - community.aws
