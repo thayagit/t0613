@@ -150,6 +150,7 @@
       shell: |
          pwd
          ls -l
+         ping -c 3 172.17.0.1
          aws --version
       register: SHELL_SETTAGS
     - debug: msg="{{ SHELL_SETTAGS }}"
