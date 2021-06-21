@@ -124,7 +124,7 @@
 
 ---
 - hosts: 172.17.0.1
-  connection: 172.17.0.1
+  connection: local
   gather_facts: no
   collections:
     - community.aws
