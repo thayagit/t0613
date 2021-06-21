@@ -124,7 +124,6 @@
 
 ---
 - hosts: 172.20.8.121
-  connection: local
   gather_facts: no
   collections:
     - community.aws
